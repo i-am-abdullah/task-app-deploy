@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, HttpStatus, HttpExcept
 import { UsersService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { AuthGuard } from 'src/auth/guards/auth.guard';
 
 @Controller('users')
 export class UsersController {
@@ -16,11 +17,13 @@ export class UsersController {
     }
   }
 
+  @UseGuards(AuthGuard)
   @Get()
   async findAll() {
     return await this.usersService.findAll();
   }
 
+  @UseGuards(AuthGuard)
   @Get(':id')
   async findOne(@Param('id') id: string) {
     const user = await this.usersService.findOne(id);
@@ -30,6 +33,7 @@ export class UsersController {
     return user;
   }
 
+  @UseGuards(AuthGuard)
   @Put(':id')
   async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     try {
@@ -39,6 +43,7 @@ export class UsersController {
     }
   }
 
+  @UseGuards(AuthGuard)
   @Delete(':id')
   async remove(@Param('id') id: string) {
     try {
