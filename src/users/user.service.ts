@@ -1,54 +1,123 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { BaseService } from 'src/common/base.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
-export class UsersService {
+export class UsersService extends BaseService<User> {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
-  ) {}
-
-  async create(createUserDto: CreateUserDto): Promise<User> {
-    try {
-      const existingUsername = await this.usersRepository.findOne({
-        where: { username: createUserDto.username }
-      });
-      if (existingUsername) {
-        throw new ConflictException('Username already exists');
-      }
-
-      const existingEmail = await this.usersRepository.findOne({
-        where: { email: createUserDto.email }
-      });
-      if (existingEmail) {
-        throw new ConflictException('Email already exists');
-      }
-
-      const user = this.usersRepository.create({
-        ...createUserDto,
-        role: 'user',
-      });
-
-      const savedUser = await this.usersRepository.save(user);
-
-      const { passwordHash, ...result } = savedUser;
-      return result as User;
-    } catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
-      }
-      throw new BadRequestException('Failed to create user: ' + error.message);
-    }
+  ) {
+    super(usersRepository, 'User');
   }
 
-  async findAll(): Promise<Partial<User>[]> {
-    try {
-      const users = await this.usersRepository.find({
+  // Override create method to add user-specific logic
+  async create(createUserDto: CreateUserDto): Promise<User> {
+    // Validate unique fields
+    await this.validateUnique('username', createUserDto.username);
+    await this.validateUnique('email', createUserDto.email);
+
+    // Create user with default role
+    const userData = {
+      ...createUserDto,
+      role: 'user',
+    };
+
+    const user = await super.create(userData);
+    
+    // Remove password hash from response
+    const { passwordHash, ...result } = user;
+    return result as User;
+  }
+
+  // Override findAll to exclude password hash and add ordering
+  async findAll(): Promise<any> {
+    return super.findAll({
+      select: [
+        'id',
+        'username',
+        'email',
+        'fullName',
+        'phoneNumber',
+        'role',
+        'lastLogin',
+        'createdAt',
+        'updatedAt'
+      ],
+      order: {
+        createdAt: 'DESC'
+      }
+    });
+  }
+
+  // Override findOne to exclude password hash
+  async findOne(id: string): Promise<any> {
+    return super.findOne(id, {
+      select: [
+        'id',
+        'username',
+        'email',
+        'fullName',
+        'phoneNumber',
+        'role',
+        'lastLogin',
+        'createdAt',
+        'updatedAt'
+      ]
+    });
+  }
+
+  // Custom method for authentication
+  async findByEmail(email: string): Promise<User> {
+    return super.findBy({ email } as any, {
+      select: [
+        'id',
+        'username',
+        'email',
+        'passwordHash',
+        'fullName',
+        'phoneNumber',
+        'role',
+        'lastLogin'
+      ]
+    });
+  }
+
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<any> {
+    if (updateUserDto.username) {
+      await this.validateUnique('username', updateUserDto.username, id);
+    }
+    
+    if (updateUserDto.email) {
+      await this.validateUnique('email', updateUserDto.email, id);
+    }
+
+    const updatedUser = await super.update(id, updateUserDto);
+    return updatedUser;
+  }
+
+  // Custom method for updating last login
+  async updateLastLogin(id: string): Promise<void> {
+    await super.update(id, {
+      lastLogin: new Date()
+    } as any);
+  }
+
+  // Custom method for password validation
+  async validatePassword(user: User, password: string): Promise<boolean> {
+    return bcrypt.compare(password, user.passwordHash);
+  }
+
+  // Get users with pagination
+  async findUsersWithPagination(page: number = 1, limit: number = 10) {
+    return super.findAllWithPagination(
+      { page, limit },
+      {
         select: [
           'id',
           'username',
@@ -63,132 +132,36 @@ export class UsersService {
         order: {
           createdAt: 'DESC'
         }
-      });
-
-      return users;
-    } catch (error) {
-      throw new BadRequestException('Failed to fetch users: ' + error.message);
-    }
+      }
+    );
   }
 
-  async findOne(id: string): Promise<Partial<User>> {
-    try {
-      const user = await this.usersRepository.findOne({
-        where: { id },
-        select: [
-          'id',
-          'username',
-          'email',
-          'fullName',
-          'phoneNumber',
-          'role',
-          'lastLogin',
-          'createdAt',
-          'updatedAt'
-        ]
-      });
-
-      if (!user) {
-        throw new NotFoundException(`User with ID ${id} not found`);
-      }
-
-      return user;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new BadRequestException('Failed to fetch user: ' + error.message);
-    }
+  // Search users by username or email
+  async searchUsers(searchTerm: string): Promise<Partial<User>[]> {
+    const users = await super.search(searchTerm, ['username', 'email', 'fullName']);
+    
+    // Remove password hash from results
+    return users.map(({ passwordHash, ...user }) => user);
   }
 
-
-  async findByEmail(email: string): Promise<User> {
-    try {
-      const user = await this.usersRepository.findOne({
-        where: { email },
-        select: [
-          'id',
-          'username',
-          'email',
-          'passwordHash',
-          'fullName',
-          'phoneNumber',
-          'role',
-          'lastLogin'
-        ]
-      });
-
-      if (!user) {
-        throw new NotFoundException(`User with email ${email} not found`);
+  // Get users by role
+  async findByRole(role: string): Promise<Partial<User>[]> {
+    return super.findAll({
+      where: { role } as any,
+      select: [
+        'id',
+        'username',
+        'email',
+        'fullName',
+        'phoneNumber',
+        'role',
+        'lastLogin',
+        'createdAt',
+        'updatedAt'
+      ],
+      order: {
+        createdAt: 'DESC'
       }
-
-      return user;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new BadRequestException('Failed to fetch user: ' + error.message);
-    }
-  }
-
-  async update(id: string, updateUserDto: UpdateUserDto): Promise<Partial<User>> {
-    try {
-      await this.findOne(id);
-
-      if (updateUserDto.username) {
-        const existingUsername = await this.usersRepository.findOne({
-          where: { username: updateUserDto.username }
-        });
-        if (existingUsername && existingUsername.id !== id) {
-          throw new ConflictException('Username already exists');
-        }
-      }
-
-      if (updateUserDto.email) {
-        const existingEmail = await this.usersRepository.findOne({
-          where: { email: updateUserDto.email }
-        });
-        if (existingEmail && existingEmail.id !== id) {
-          throw new ConflictException('Email already exists');
-        }
-      }
-
-      await this.usersRepository.update(id, updateUserDto);
-      return this.findOne(id);
-    } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ConflictException) {
-        throw error;
-      }
-      throw new BadRequestException('Failed to update user: ' + error.message);
-    }
-  }
-
-  async updateLastLogin(id: string): Promise<void> {
-    try {
-      await this.usersRepository.update(id, {
-        lastLogin: new Date()
-      });
-    } catch (error) {
-      throw new BadRequestException('Failed to update last login: ' + error.message);
-    }
-  }
-
-
-  async remove(id: string): Promise<void> {
-    try {
-      const result = await this.usersRepository.delete(id);
-      if (result.affected === 0) {
-        throw new NotFoundException(`User with ID ${id} not found`);
-      }
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new BadRequestException('Failed to delete user: ' + error.message);
-    }
-  }
-
-  async validatePassword(user: User, password: string): Promise<boolean> {
-    return bcrypt.compare(password, user.passwordHash);
+    });
   }
 }
