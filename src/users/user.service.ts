@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { CreateUserDto } from './dtos/create-user.dto';
+import { UpdateUserDto } from './dtos/update-user.dto';
 import { BaseService } from 'src/common/base.service';
 import * as bcrypt from 'bcrypt';
 
@@ -16,21 +16,17 @@ export class UsersService extends BaseService<User> {
     super(usersRepository, 'User');
   }
 
-  // Override create method to add user-specific logic
   async create(createUserDto: CreateUserDto): Promise<User> {
-    // Validate unique fields
     await this.validateUnique('username', createUserDto.username);
     await this.validateUnique('email', createUserDto.email);
 
-    // Create user with default role
     const userData = {
       ...createUserDto,
-      role: 'user',
+    role: (createUserDto as any).role || 'user',
     };
 
     const user = await super.create(userData);
     
-    // Remove password hash from response
     const { passwordHash, ...result } = user;
     return result as User;
   }

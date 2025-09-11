@@ -3,6 +3,8 @@ import { config } from 'dotenv';
 
 config();
 
+const useSSL = (process.env.DATABASE_SSL || 'true').toLowerCase() === 'true';
+
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
   host: process.env.DATABASE_HOST,
@@ -14,6 +16,8 @@ export const dataSourceOptions: DataSourceOptions = {
   migrations: ['dist/migrations/*{.ts,.js}'],
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',
+  ssl: useSSL ? { rejectUnauthorized: true } : false,
+  extra: useSSL ? { ssl: { rejectUnauthorized: true } } : undefined,
 };
 
 const dataSource = new DataSource(dataSourceOptions);

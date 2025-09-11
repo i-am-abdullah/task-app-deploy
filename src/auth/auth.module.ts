@@ -6,10 +6,18 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/user.module';
 import { AuthGuard } from './guards/auth.guard';
+import { ProjectsModule } from 'src/projects/project.module';
+import { ProjectTeamLeadsModule } from 'src/project-team-leads/project-team-lead.module';
+import { BoardsModule } from 'src/boards/board.module';
+import { BoardMembersModule } from 'src/board-members/board-member.module';
 
 @Module({
   imports: [
     UsersModule,
+    ProjectsModule,
+    ProjectTeamLeadsModule,
+    BoardsModule,
+    BoardMembersModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -19,7 +27,7 @@ import { AuthGuard } from './guards/auth.guard';
           expiresIn: '15m',
         },
       }),
-      inject: [ConfigService],
+      inject: [ConfigService]
     }),
   ],
   controllers: [AuthController],
