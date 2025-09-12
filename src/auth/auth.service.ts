@@ -140,7 +140,7 @@ export class AuthService {
 
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new BadRequestException('Invalid credentials');
     }
 
     const isPasswordValid = await this.usersService.validatePassword(
@@ -148,7 +148,7 @@ export class AuthService {
       password,
     );
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new BadRequestException('Invalid credentials');
     }
 
     await this.usersService.updateLastLogin(user.id);
