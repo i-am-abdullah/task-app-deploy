@@ -41,6 +41,8 @@ export class WorkspacesController {
   ) {
     if (search) {
       const workspaces = await this.workspacesService.searchWorkspaces(search);
+      console.log(workspaces);
+      
       return ResponseUtil.success(workspaces, 'Workspaces retrieved successfully');
     }
 

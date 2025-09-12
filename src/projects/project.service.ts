@@ -1,6 +1,6 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { CreateProjectDto } from './dtos/project.dto';
 import { UpdateProjectDto } from './dtos/project.dto';
@@ -124,13 +124,14 @@ export class ProjectsService extends BaseService<Project> {
     return super.remove(id);
   }
 
-  async searchProjects(searchTerm: string): Promise<Project[]> {
+async searchProjects(searchTerm: string): Promise<Project[]> {
     const projects = await super.search(searchTerm, ['title']);
-    
-    // Get full project data with relations
+
     const projectIds = projects.map(p => p.id);
+    if (!projectIds || projectIds.length === 0) return [];
+
     return this.projectsRepository.find({
-      where: { id: { $in: projectIds } as any },
+      where: { id: In(projectIds) },
       relations: ['workspace', 'creator'],
       select: {
         workspace: {
@@ -145,7 +146,7 @@ export class ProjectsService extends BaseService<Project> {
         }
       }
     });
-  }
+}
 
   async findByStatus(status: ProjectStatus): Promise<Project[]> {
     return super.findAll({

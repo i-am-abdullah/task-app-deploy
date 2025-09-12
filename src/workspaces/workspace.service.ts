@@ -1,6 +1,6 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Workspace } from './entities/workspace.entity';
 import { CreateWorkspaceDto } from './dtos/workspace.dto';
 import { UpdateWorkspaceDto } from './dtos/workspace.dto';
@@ -96,13 +96,14 @@ export class WorkspacesService extends BaseService<Workspace> {
     return super.remove(id);
   }
 
-  async searchWorkspaces(searchTerm: string): Promise<Workspace[]> {
+async searchWorkspaces(searchTerm: string): Promise<Workspace[]> {
     const workspaces = await super.search(searchTerm, ['name']);
-    
-    // Get full workspace data with relations
+
     const workspaceIds = workspaces.map(w => w.id);
+    if (!workspaceIds || workspaceIds.length === 0) return [];
+
     return this.workspacesRepository.find({
-      where: { id: { $in: workspaceIds } as any },
+      where: { id: In(workspaceIds) },
       relations: ['creator'],
       select: {
         creator: {
@@ -113,5 +114,5 @@ export class WorkspacesService extends BaseService<Workspace> {
         }
       }
     });
-  }
+}
 }
