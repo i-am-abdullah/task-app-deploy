@@ -1,12 +1,12 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
-  Delete, 
-  Query, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
   Request,
   UseGuards
 } from '@nestjs/common';
@@ -21,13 +21,13 @@ import { RequestWithUser } from 'src/auth/interfaces/request-with-user.interface
 @Controller('projects')
 @UseGuards(AuthGuard)
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(private readonly projectsService: ProjectsService) { }
 
   @Post()
-  async create(@Body() createProjectDto: CreateProjectDto, @Request() req:RequestWithUser) {
+  async create(@Body() createProjectDto: CreateProjectDto, @Request() req: RequestWithUser) {
     const project = await this.projectsService.createProject(
-      createProjectDto, 
-      req.user.id, 
+      createProjectDto,
+      req.user.id,
       req.user.role
     );
     return ResponseUtil.created(project, 'Project created successfully');
@@ -42,9 +42,15 @@ export class ProjectsController {
     @Query('workspaceId') workspaceId?: string,
     @Query('all') all?: string
   ) {
+    // Enhanced search with pagination and workspace filtering
     if (search) {
-      const projects = await this.projectsService.searchProjects(search);
-      return ResponseUtil.success(projects, 'Projects retrieved successfully');
+      const result = await this.projectsService.searchProjectsWithPagination(
+        search,
+        page ? parseInt(page) : 1,
+        limit ? parseInt(limit) : 10,
+        workspaceId
+      );
+      return ResponseUtil.success(result, 'Projects retrieved successfully');
     }
 
     if (status) {
@@ -77,9 +83,9 @@ export class ProjectsController {
 
   @Patch(':id')
   async update(
-    @Param('id') id: string, 
+    @Param('id') id: string,
     @Body() updateProjectDto: UpdateProjectDto,
-    @Request() req:RequestWithUser
+    @Request() req: RequestWithUser
   ) {
     const project = await this.projectsService.updateProject(id, updateProjectDto, req.user.role);
     return ResponseUtil.updated(project, 'Project updated successfully');

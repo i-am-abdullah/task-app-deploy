@@ -1,6 +1,6 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, Repository, Like } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { CreateProjectDto } from './dtos/project.dto';
 import { UpdateProjectDto } from './dtos/project.dto';
@@ -124,7 +124,8 @@ export class ProjectsService extends BaseService<Project> {
     return super.remove(id);
   }
 
-async searchProjects(searchTerm: string): Promise<Project[]> {
+  // Original search method (keeping for backward compatibility)
+  async searchProjects(searchTerm: string): Promise<Project[]> {
     const projects = await super.search(searchTerm, ['title']);
 
     const projectIds = projects.map(p => p.id);
@@ -146,7 +147,64 @@ async searchProjects(searchTerm: string): Promise<Project[]> {
         }
       }
     });
-}
+  }
+
+  async searchProjectsWithPagination(
+    searchTerm: string,
+    page: number = 1,
+    limit: number = 10,
+    workspaceId?: string
+  ) {
+    const skip = (page - 1) * limit;
+    
+    const whereConditions: any = {
+      title: Like(`%${searchTerm}%`)
+    };
+    
+    if (workspaceId) {
+      whereConditions.workspaceId = workspaceId;
+    }
+
+    const total = await this.projectsRepository.count({
+      where: whereConditions
+    });
+
+    const projects = await this.projectsRepository.find({
+      where: whereConditions,
+      relations: ['workspace', 'creator'],
+      select: {
+        workspace: {
+          id: true,
+          name: true,
+        },
+        creator: {
+          id: true,
+          username: true,
+          email: true,
+          fullName: true,
+        }
+      },
+      order: {
+        createdAt: 'DESC'
+      },
+      skip,
+      take: limit
+    });
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: projects,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      }
+    };
+  }
 
   async findByStatus(status: ProjectStatus): Promise<Project[]> {
     return super.findAll({
