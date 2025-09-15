@@ -4,9 +4,9 @@ import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { AuthGuard } from 'src/auth/guards/auth.guard';
 
-@Controller('users')
+@Controller('users') ///users/by-role/:role
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Post()
   async create(@Body() createUserDto: CreateUserDto) {
@@ -21,6 +21,21 @@ export class UsersController {
   @Get()
   async findAll() {
     return await this.usersService.findAll();
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('by-role/:role')
+  async findByRole(@Param('role') role: string) {
+    try {
+      const users = await this.usersService.findByRole(role);
+      return {
+        role,
+        count: users.length,
+        users
+      };
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
   }
 
   @UseGuards(AuthGuard)
