@@ -1,12 +1,12 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
-  Delete, 
-  Query, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
   Request,
   UseGuards
 } from '@nestjs/common';
@@ -21,18 +21,17 @@ import { RequestWithUser } from 'src/auth/interfaces/request-with-user.interface
 @Controller('boards')
 @UseGuards(AuthGuard)
 export class BoardsController {
-  constructor(private readonly boardsService: BoardsService) {}
+  constructor(private readonly boardsService: BoardsService) { }
 
   @Post()
-  async create(@Body() createBoardDto: CreateBoardDto, @Request() req:RequestWithUser) {
+  async create(@Body() createBoardDto: CreateBoardDto, @Request() req: RequestWithUser) {
     const board = await this.boardsService.createBoard(
-      createBoardDto, 
-      req.user.id, 
+      createBoardDto,
+      req.user.id,
       req.user.role
     );
     return ResponseUtil.created(board, 'Board created successfully');
   }
-
   @Get()
   async findAll(
     @Query('page') page?: string,
@@ -42,9 +41,15 @@ export class BoardsController {
     @Query('projectId') projectId?: string,
     @Query('all') all?: string
   ) {
+    // Enhanced search with pagination and project filtering
     if (search) {
-      const boards = await this.boardsService.searchBoards(search);
-      return ResponseUtil.success(boards, 'Boards retrieved successfully');
+      const result = await this.boardsService.searchBoardsWithPagination(
+        search,
+        page ? parseInt(page) : 1,
+        limit ? parseInt(limit) : 10,
+        projectId
+      );
+      return ResponseUtil.success(result, 'Boards retrieved successfully');
     }
 
     if (status) {
@@ -77,9 +82,9 @@ export class BoardsController {
 
   @Patch(':id')
   async update(
-    @Param('id') id: string, 
+    @Param('id') id: string,
     @Body() updateBoardDto: UpdateBoardDto,
-    @Request() req:RequestWithUser
+    @Request() req: RequestWithUser
   ) {
     const board = await this.boardsService.updateBoard(id, updateBoardDto, req.user.role);
     return ResponseUtil.updated(board, 'Board updated successfully');

@@ -1,6 +1,6 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, Like, Repository } from 'typeorm';
 import { Board } from './entities/board.entity';
 import { UpdateBoardDto } from './dtos/board.dto';
 import { CreateBoardDto } from './dtos/board.dto';
@@ -136,35 +136,100 @@ export class BoardsService extends BaseService<Board> {
         return super.remove(id);
     }
 
-async searchBoards(searchTerm: string): Promise<Board[]> {
-    const boards = await super.search(searchTerm, ['title']);
+    async searchBoards(searchTerm: string): Promise<Board[]> {
+        const boards = await super.search(searchTerm, ['title']);
 
-    // If no ids found, return early to avoid building an IN() with empty list
-    const boardIds = boards.map(b => b.id);
-    if (!boardIds || boardIds.length === 0) return [];
+        // If no ids found, return early to avoid building an IN() with empty list
+        const boardIds = boards.map(b => b.id);
+        if (!boardIds || boardIds.length === 0) return [];
 
-    // Use TypeORM's In operator (not {$in: ...})
-    return this.boardsRepository.find({
-        where: { id: In(boardIds) },
-        relations: ['project', 'project.workspace', 'creator'],
-        select: {
-            project: {
-                id: true,
-                title: true,
-                workspace: {
+        // Use TypeORM's In operator (not {$in: ...})
+        return this.boardsRepository.find({
+            where: { id: In(boardIds) },
+            relations: ['project', 'project.workspace', 'creator'],
+            select: {
+                project: {
                     id: true,
-                    name: true,
+                    title: true,
+                    workspace: {
+                        id: true,
+                        name: true,
+                    }
+                },
+                creator: {
+                    id: true,
+                    username: true,
+                    email: true,
+                    fullName: true,
+                }
+            }
+        });
+    }
+
+    async searchBoardsWithPagination(
+        searchTerm: string,
+        page: number = 1,
+        limit: number = 10,
+        projectId?: string
+    ) {
+        const skip = (page - 1) * limit;
+
+        // Build where conditions
+        const whereConditions: any = {
+            title: Like(`%${searchTerm}%`)
+        };
+
+        if (projectId) {
+            whereConditions.projectId = projectId;
+        }
+
+        // Get total count for pagination
+        const total = await this.boardsRepository.count({
+            where: whereConditions
+        });
+
+        // Get paginated results
+        const boards = await this.boardsRepository.find({
+            where: whereConditions,
+            relations: ['project', 'project.workspace', 'creator'],
+            select: {
+                project: {
+                    id: true,
+                    title: true,
+                    workspace: {
+                        id: true,
+                        name: true,
+                    }
+                },
+                creator: {
+                    id: true,
+                    username: true,
+                    email: true,
+                    fullName: true,
                 }
             },
-            creator: {
-                id: true,
-                username: true,
-                email: true,
-                fullName: true,
+            order: {
+                createdAt: 'DESC'
+            },
+            skip,
+            take: limit
+        });
+
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+            data: boards,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPreviousPage: page > 1
             }
-        }
-    });
-}
+        };
+    }
+
 
     async findByStatus(status: BoardStatus): Promise<Board[]> {
         return super.findAll({
