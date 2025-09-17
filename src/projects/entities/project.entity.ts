@@ -4,6 +4,8 @@ import { User } from 'src/users/entities/user.entity';
 import { Workspace } from 'src/workspaces/entities/workspace.entity';
 import { Board } from 'src/boards/entities/board.entity';
 import { ProjectTeamLead } from 'src/project-team-leads/entities/project-team-lead.entity';
+import { List } from 'src/lists/entities/list.entity';
+import { Task } from 'src/tasks/entities/task.entity';
 import { ProjectStatus } from 'src/enums';
 
 @Entity('projects')
@@ -40,4 +42,10 @@ export class Project extends BaseEntity {
 
   @OneToMany(() => ProjectTeamLead, teamLead => teamLead.project)
   teamLeads: ProjectTeamLead[];
+
+  @OneToMany(() => List, list => list.project)
+  lists: List[];
+
+  @OneToMany(() => Task, task => task.project)
+  tasks: Task[];
 }
