@@ -33,7 +33,7 @@ export class BoardMembersService {
       select: {
         board: {
           id: true,
-          name: true,
+          title: true,
         } as any,
         user: {
           id: true,
@@ -73,7 +73,7 @@ export class BoardMembersService {
       select: {
         board: {
           id: true,
-          name: true,
+          title: true,
         } as any,
       } as any,
       order: {
@@ -89,7 +89,7 @@ export class BoardMembersService {
       select: {
         board: {
           id: true,
-          name: true,
+          title: true,
         } as any,
         user: {
           id: true,
