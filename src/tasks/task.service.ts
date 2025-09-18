@@ -149,7 +149,6 @@ export class TasksService extends BaseService<Task> {
             }
         });
 
-        // Check RBAC access if user info provided
         if (userId && userRole) {
             await this.rbacService.validateEntityAccess(userId, userRole, {
                 projectId: task.projectId,

@@ -6,6 +6,8 @@ import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { BaseService } from 'src/common/base.service';
 import * as bcrypt from 'bcrypt';
+import { ProjectTeamLead } from 'src/project-team-leads/entities/project-team-lead.entity';
+import { BoardMember } from 'src/board-members/entities/board-member.entity';
 
 @Injectable()
 export class UsersService extends BaseService<User> {
@@ -140,9 +142,12 @@ export class UsersService extends BaseService<User> {
     return users.map(({ passwordHash, ...user }) => user);
   }
 
-  // Get users by role
-  async findByRole(role: string): Promise<Partial<User>[]> {
-    return super.findAll({
+  async findByRole(
+    role: string, 
+    includeAssociations: boolean = true
+  ): Promise<Partial<User>[]> {
+    
+    const queryOptions: any = {
       where: { role } as any,
       select: [
         'id',
@@ -158,6 +163,19 @@ export class UsersService extends BaseService<User> {
       order: {
         createdAt: 'DESC'
       }
-    });
+    };
+
+    // Include associations if requested
+    if (includeAssociations) {
+      queryOptions.relations = [
+        'projectTeamLeads',
+        'boardMemberships'
+      ];
+      
+      // Remove specific fields from the select since we're using relations
+      delete queryOptions.select;
+    }
+
+    return super.findAll(queryOptions);
   }
 }
