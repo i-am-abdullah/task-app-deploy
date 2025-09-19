@@ -45,7 +45,7 @@ export class TasksService extends BaseService<Task> {
 
     async findAll(): Promise<Task[]> {
         return super.findAll({
-            relations: ['project', 'board', 'list', 'creator', 'assignee'],
+            relations: ['project', 'board', 'list', 'creator', 'taskAssignees', 'taskAssignees.user'],
             select: {
                 project: {
                     id: true,
@@ -65,11 +65,15 @@ export class TasksService extends BaseService<Task> {
                     email: true,
                     fullName: true,
                 },
-                assignee: {
+                taskAssignees: {
                     id: true,
-                    username: true,
-                    email: true,
-                    fullName: true,
+                    assignedAt: true,
+                    user: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        fullName: true,
+                    }
                 }
             },
             order: {
@@ -83,7 +87,7 @@ export class TasksService extends BaseService<Task> {
         return super.findAllWithPagination(
             { page, limit },
             {
-                relations: ['project', 'board', 'list', 'creator', 'assignee'],
+                relations: ['project', 'board', 'list', 'creator', 'taskAssignees', 'taskAssignees.user'],
                 select: {
                     project: {
                         id: true,
@@ -103,11 +107,15 @@ export class TasksService extends BaseService<Task> {
                         email: true,
                         fullName: true,
                     },
-                    assignee: {
+                    taskAssignees: {
                         id: true,
-                        username: true,
-                        email: true,
-                        fullName: true,
+                        assignedAt: true,
+                        user: {
+                            id: true,
+                            username: true,
+                            email: true,
+                            fullName: true,
+                        }
                     }
                 },
                 order: {
@@ -120,7 +128,7 @@ export class TasksService extends BaseService<Task> {
 
     async findOneTask(id: string, userId?: string, userRole?: string): Promise<Task> {
         const task = await super.findOne(id, {
-            relations: ['project', 'board', 'list', 'creator', 'assignee'],
+            relations: ['project', 'board', 'list', 'creator', 'taskAssignees', 'taskAssignees.user'],
             select: {
                 project: {
                     id: true,
@@ -140,11 +148,15 @@ export class TasksService extends BaseService<Task> {
                     email: true,
                     fullName: true,
                 },
-                assignee: {
+                taskAssignees: {
                     id: true,
-                    username: true,
-                    email: true,
-                    fullName: true,
+                    assignedAt: true,
+                    user: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        fullName: true,
+                    }
                 }
             }
         });
@@ -197,7 +209,7 @@ export class TasksService extends BaseService<Task> {
 
         return this.tasksRepository.find({
             where: { id: In(taskIds) },
-            relations: ['project', 'board', 'list', 'creator', 'assignee'],
+            relations: ['project', 'board', 'list', 'creator', 'taskAssignees', 'taskAssignees.user'],
             select: {
                 project: {
                     id: true,
@@ -217,11 +229,15 @@ export class TasksService extends BaseService<Task> {
                     email: true,
                     fullName: true,
                 },
-                assignee: {
+                taskAssignees: {
                     id: true,
-                    username: true,
-                    email: true,
-                    fullName: true,
+                    assignedAt: true,
+                    user: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        fullName: true,
+                    }
                 }
             }
         });
@@ -248,21 +264,32 @@ export class TasksService extends BaseService<Task> {
         if (listId) additionalFilters.listId = listId;
         if (boardId) additionalFilters.boardId = boardId;
         if (projectId) additionalFilters.projectId = projectId;
-        if (assignedTo) additionalFilters.assignedTo = assignedTo;
+
+        // For assignedTo filter, we need to use a different approach since we removed the direct assignedTo column
+        let assignedToCondition = {};
+        if (assignedTo) {
+            assignedToCondition = {
+                taskAssignees: {
+                    userId: assignedTo
+                }
+            };
+        }
 
         // Apply additional filters to each condition
         const finalWhereConditions = whereConditions.map(condition => ({
             ...condition,
-            ...additionalFilters
+            ...additionalFilters,
+            ...assignedToCondition
         }));
 
         const total = await this.tasksRepository.count({
-            where: finalWhereConditions
+            where: finalWhereConditions,
+            relations: assignedTo ? ['taskAssignees'] : undefined
         });
 
         const tasks = await this.tasksRepository.find({
             where: finalWhereConditions,
-            relations: ['project', 'board', 'list', 'creator', 'assignee'],
+            relations: ['project', 'board', 'list', 'creator', 'taskAssignees', 'taskAssignees.user'],
             select: {
                 project: {
                     id: true,
@@ -282,11 +309,15 @@ export class TasksService extends BaseService<Task> {
                     email: true,
                     fullName: true,
                 },
-                assignee: {
+                taskAssignees: {
                     id: true,
-                    username: true,
-                    email: true,
-                    fullName: true,
+                    assignedAt: true,
+                    user: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        fullName: true,
+                    }
                 }
             },
             order: {
@@ -315,7 +346,7 @@ export class TasksService extends BaseService<Task> {
     async findByStatus(status: TaskStatus): Promise<Task[]> {
         return super.findAll({
             where: { status },
-            relations: ['project', 'board', 'list', 'creator', 'assignee'],
+            relations: ['project', 'board', 'list', 'creator', 'taskAssignees', 'taskAssignees.user'],
             select: {
                 project: {
                     id: true,
@@ -335,11 +366,15 @@ export class TasksService extends BaseService<Task> {
                     email: true,
                     fullName: true,
                 },
-                assignee: {
+                taskAssignees: {
                     id: true,
-                    username: true,
-                    email: true,
-                    fullName: true,
+                    assignedAt: true,
+                    user: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        fullName: true,
+                    }
                 }
             },
             order: {
@@ -352,7 +387,7 @@ export class TasksService extends BaseService<Task> {
     async findByPriority(priority: TaskPriority): Promise<Task[]> {
         return super.findAll({
             where: { priority },
-            relations: ['project', 'board', 'list', 'creator', 'assignee'],
+            relations: ['project', 'board', 'list', 'creator', 'taskAssignees', 'taskAssignees.user'],
             select: {
                 project: {
                     id: true,
@@ -372,11 +407,15 @@ export class TasksService extends BaseService<Task> {
                     email: true,
                     fullName: true,
                 },
-                assignee: {
+                taskAssignees: {
                     id: true,
-                    username: true,
-                    email: true,
-                    fullName: true,
+                    assignedAt: true,
+                    user: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        fullName: true,
+                    }
                 }
             },
             order: {
@@ -389,7 +428,7 @@ export class TasksService extends BaseService<Task> {
     async findByList(listId: string): Promise<Task[]> {
         return super.findAll({
             where: { listId },
-            relations: ['project', 'board', 'list', 'creator', 'assignee'],
+            relations: ['project', 'board', 'list', 'creator', 'taskAssignees', 'taskAssignees.user'],
             select: {
                 project: {
                     id: true,
@@ -409,11 +448,15 @@ export class TasksService extends BaseService<Task> {
                     email: true,
                     fullName: true,
                 },
-                assignee: {
+                taskAssignees: {
                     id: true,
-                    username: true,
-                    email: true,
-                    fullName: true,
+                    assignedAt: true,
+                    user: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        fullName: true,
+                    }
                 }
             },
             order: {
@@ -426,7 +469,7 @@ export class TasksService extends BaseService<Task> {
     async findByBoard(boardId: string): Promise<Task[]> {
         return super.findAll({
             where: { boardId },
-            relations: ['project', 'board', 'list', 'creator', 'assignee'],
+            relations: ['project', 'board', 'list', 'creator', 'taskAssignees', 'taskAssignees.user'],
             select: {
                 project: {
                     id: true,
@@ -446,11 +489,15 @@ export class TasksService extends BaseService<Task> {
                     email: true,
                     fullName: true,
                 },
-                assignee: {
+                taskAssignees: {
                     id: true,
-                    username: true,
-                    email: true,
-                    fullName: true,
+                    assignedAt: true,
+                    user: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        fullName: true,
+                    }
                 }
             },
             order: {
@@ -463,7 +510,7 @@ export class TasksService extends BaseService<Task> {
     async findByProject(projectId: string): Promise<Task[]> {
         return super.findAll({
             where: { projectId },
-            relations: ['project', 'board', 'list', 'creator', 'assignee'],
+            relations: ['project', 'board', 'list', 'creator', 'taskAssignees', 'taskAssignees.user'],
             select: {
                 project: {
                     id: true,
@@ -483,11 +530,15 @@ export class TasksService extends BaseService<Task> {
                     email: true,
                     fullName: true,
                 },
-                assignee: {
+                taskAssignees: {
                     id: true,
-                    username: true,
-                    email: true,
-                    fullName: true,
+                    assignedAt: true,
+                    user: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        fullName: true,
+                    }
                 }
             },
             order: {
@@ -498,9 +549,13 @@ export class TasksService extends BaseService<Task> {
     }
 
     async findByAssignee(assignedTo: string): Promise<Task[]> {
-        return super.findAll({
-            where: { assignedTo },
-            relations: ['project', 'board', 'list', 'creator', 'assignee'],
+        return this.tasksRepository.find({
+            where: {
+                taskAssignees: {
+                    userId: assignedTo
+                }
+            },
+            relations: ['project', 'board', 'list', 'creator', 'taskAssignees', 'taskAssignees.user'],
             select: {
                 project: {
                     id: true,
@@ -520,11 +575,15 @@ export class TasksService extends BaseService<Task> {
                     email: true,
                     fullName: true,
                 },
-                assignee: {
+                taskAssignees: {
                     id: true,
-                    username: true,
-                    email: true,
-                    fullName: true,
+                    assignedAt: true,
+                    user: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        fullName: true,
+                    }
                 }
             },
             order: {

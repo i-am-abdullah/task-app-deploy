@@ -23,10 +23,6 @@ export class CreateTaskDto {
   priority?: TaskPriority;
 
   @IsOptional()
-  @IsUUID()
-  assignedTo?: string;
-
-  @IsOptional()
   @IsNumber()
   @Min(0)
   position?: number;
@@ -57,10 +53,6 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsEnum(TaskPriority)
   priority?: TaskPriority;
-
-  @IsOptional()
-  @IsUUID()
-  assignedTo?: string;
 
   @IsOptional()
   @IsNumber()

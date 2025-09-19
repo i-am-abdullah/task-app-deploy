@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindManyOptions, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
@@ -24,17 +24,16 @@ export class UsersService extends BaseService<User> {
 
     const userData = {
       ...createUserDto,
-    role: (createUserDto as any).role || 'user',
+      role: (createUserDto as any).role || 'user',
     };
 
     const user = await super.create(userData);
-    
+
     const { passwordHash, ...result } = user;
     return result as User;
   }
 
-  // Override findAll to exclude password hash and add ordering
-  async findAll(): Promise<any> {
+  async findAll(options?: FindManyOptions<User>): Promise<User[]> {
     return super.findAll({
       select: [
         'id',
@@ -49,7 +48,8 @@ export class UsersService extends BaseService<User> {
       ],
       order: {
         createdAt: 'DESC'
-      }
+      },
+      ...options
     });
   }
 
@@ -90,7 +90,7 @@ export class UsersService extends BaseService<User> {
     if (updateUserDto.username) {
       await this.validateUnique('username', updateUserDto.username, id);
     }
-    
+
     if (updateUserDto.email) {
       await this.validateUnique('email', updateUserDto.email, id);
     }
@@ -137,16 +137,16 @@ export class UsersService extends BaseService<User> {
   // Search users by username or email
   async searchUsers(searchTerm: string): Promise<Partial<User>[]> {
     const users = await super.search(searchTerm, ['username', 'email', 'fullName']);
-    
+
     // Remove password hash from results
     return users.map(({ passwordHash, ...user }) => user);
   }
 
   async findByRole(
-    role: string, 
+    role: string,
     includeAssociations: boolean = true
   ): Promise<Partial<User>[]> {
-    
+
     const queryOptions: any = {
       where: { role } as any,
       select: [
@@ -171,7 +171,7 @@ export class UsersService extends BaseService<User> {
         'projectTeamLeads',
         'boardMemberships'
       ];
-      
+
       // Remove specific fields from the select since we're using relations
       delete queryOptions.select;
     }

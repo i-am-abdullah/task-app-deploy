@@ -1,9 +1,11 @@
-import { Column, Entity, ManyToOne, JoinColumn } from 'typeorm';
+// src/tasks/entities/task.entity.ts
+import { Column, Entity, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { BaseEntity } from 'src/common/base.entity';
 import { User } from 'src/users/entities/user.entity';
 import { Project } from 'src/projects/entities/project.entity';
 import { Board } from 'src/boards/entities/board.entity';
 import { List } from 'src/lists/entities/list.entity';
+import { TaskAssignee } from 'src/task-assignees/entities/task-assignee.entity';
 import { TaskStatus, TaskPriority } from 'src/enums';
 
 @Entity('tasks')
@@ -37,9 +39,6 @@ export class Task extends BaseEntity {
   @Column({ name: 'created_by' })
   createdBy: string;
 
-  @Column({ name: 'assigned_to', nullable: true })
-  assignedTo: string;
-
   @Column({ nullable: true, type: 'text' })
   description: string;
 
@@ -55,6 +54,7 @@ export class Task extends BaseEntity {
   @Column({ type: 'jsonb', nullable: true })
   metadata: Record<string, any>;
 
+  // Relations
   @ManyToOne(() => Project, project => project.tasks)
   @JoinColumn({ name: 'project_id' })
   project: Project;
@@ -71,7 +71,11 @@ export class Task extends BaseEntity {
   @JoinColumn({ name: 'created_by' })
   creator: User;
 
-  @ManyToOne(() => User, { eager: false })
-  @JoinColumn({ name: 'assigned_to' })
-  assignee: User;
+  @OneToMany(() => TaskAssignee, taskAssignee => taskAssignee.task)
+  taskAssignees: TaskAssignee[];
+
+  // Virtual property to get assignees
+  get assignees(): User[] {
+    return this.taskAssignees?.map(ta => ta.user) || [];
+  }
 }
